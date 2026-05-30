@@ -26,10 +26,30 @@
             color: #5865F2;
         }
         .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             background-color: #2b2d31;
             padding: 6px 15px;
             border-radius: 20px;
-            border: 1px solid #23a55a;
+            border: 1px solid #5865F2;
+            font-size: 14px;
+        }
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background-color: #4e5058;
+        }
+        .btn-discord {
+            background-color: #5865F2;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
             font-size: 14px;
         }
         .container {
@@ -116,15 +136,130 @@
             cursor: pointer;
             transition: 0.2s;
         }
-        .btn-save:hover { background-color: #404eed; }
     </style>
 </head>
 <body>
 
     <div class="navbar">
-        <div class="logo">😁creator bot</div>
-        <div class="user-profile">
-            🟢 Logado como: <b>ARTHURGG415</b>
+        <div class="logo">🤖 MeuBot Painel</div>
+        <div id="auth-area">
+            <button class="btn-discord" onclick="loginDiscord()">🔗 Entrar com Discord</button>
         </div>
     </div>
 
+    <div class="container">
+        <h1>Configurações do Bot</h1>
+        
+        <div class="panel-grid">
+            <div class="config-card">
+                <div class="switch-container">
+                    <h3>👋 Módulo Boas-Vindas</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="welcome_active">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <label>Mensagem de Entrada:</label>
+                <input type="text" id="welcome_msg" value="">
+            </div>
+
+            <div class="config-card">
+                <div class="switch-container">
+                    <h3>🛡️ Sistema Anti-Link</h3>
+                    <label class="switch">
+                        <input type="checkbox" id="antilink_active">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p style="font-size: 14px; color: #b9bbbe; margin: 0;">Apaga links automaticamente.</p>
+            </div>
+        </div>
+
+        <button class="btn-save" onclick="salvarConfiguracoes()">💾 Salvar Alterações</button>
+    </div>
+
+    <script>
+        const CLIENT_ID = '1510318463334350999'; 
+        
+        function loginDiscord() {
+            const redirectUri = encodeURIComponent(window.location.origin + window.location.pathname);
+            window.location.href = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${redirectUri}&response_type=token&scope=identify`;
+        }
+
+        function checarLogin() {
+            const fragment = new URLSearchParams(window.location.hash.slice(1));
+            let token = fragment.get('access_token') || localStorage.getItem('discord_token');
+
+            if (fragment.get('access_token')) {
+                localStorage.setItem('discord_token', token);
+                window.location.hash = ''; 
+            }
+
+            if (token) {
+                fetch('https://discord.com/api/users/@me', {
+                    headers: { Authorization: `Bearer ${token}` }
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error();
+                    return res.json();
+                })
+                .then(user => {
+                    const avatarUrl = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png` : 'https://cdn.discordapp.com/embed/avatars/0.png';
+                    document.getElementById('auth-area').innerHTML = `
+                        <div class="user-profile">
+                            <img class="user-avatar" src="${avatarUrl}">
+                            <span>🟢 <b>${user.username}</b></span>
+                        </div>
+                    `;
+                    carregarConfiguracoes(user.id);
+                })
+                .catch(() => {
+                    localStorage.removeItem('discord_token');
+                });
+            }
+        }
+
+        function carregarConfiguracoes(userId) {
+            const dadosSalvos = localStorage.getItem('config_' + userId);
+            if (dadosSalvos) {
+                const dados = JSON.parse(dadosSalvos);
+                document.getElementById('welcome_active').checked = dados.boasVindas.ativo;
+                document.getElementById('welcome_msg').value = dados.boasVindas.mensagem;
+                document.getElementById('antilink_active').checked = dados.antiLink.ativo;
+            } else {
+                document.getElementById('welcome_active').checked = true;
+                document.getElementById('welcome_msg').value = "Seja bem-vindo!";
+                document.getElementById('antilink_active').checked = false;
+            }
+        }
+
+        function salvarConfiguracoes() {
+            const token = localStorage.getItem('discord_token');
+            if (!token) {
+                alert("❌ Você precisa entrar com o Discord primeiro!");
+                return;
+            }
+
+            fetch('https://discord.com/api/users/@me', {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(user => {
+                const novasConfiguracoes = {
+                    boasVindas: {
+                        ativo: document.getElementById('welcome_active').checked,
+                        mensagem: document.getElementById('welcome_msg').value
+                    },
+                    antiLink: {
+                        ativo: document.getElementById('antilink_active').checked
+                    }
+                };
+                localStorage.setItem('config_' + user.id, JSON.stringify(novasConfiguracoes));
+                alert(`💾 Salvo com sucesso para a conta ${user.username}!`);
+            });
+        }
+
+        window.onload = checarLogin;
+    </script>
+</body>
+</html>
