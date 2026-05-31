@@ -1,20 +1,6 @@
-const express = require('express');
-const app = express();
-app.use(express.json());
-
-// Rota que recebe os dados do botão do site
-app.post('/salvar', (req, res) => {
-    const config = req.body;
-    console.log("Configurações recebidas do site:", config);
-    // Aqui a gente salvaria no banco de dados ou num arquivo .json
-    res.send("Configuração recebida!");
-});
-
-app.listen(3000, () => console.log("Servidor de recebimento rodando na porta 3000"));
-
 const { Client, GatewayIntentBits } = require('discord.js');
 
-// Configurando as permissões que ativamos lá no portal do Discord
+// Configuração do Bot
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -23,39 +9,54 @@ const client = new Client({
     ]
 });
 
-// A nossa lista de palavrões (adicione ou mude as palavras em minúsculo)
+// Variáveis de Controle
+let moderacaoAtiva = true; 
 const badwords = ['palavrao1', 'palavrao2', 'feio', 'bobo'];
 
+// Quando o bot ligar
 client.on('ready', () => {
-    console.log(`🚀 Bot online e operante! Logado como: ${client.user.tag}`);
+    console.log(`🚀 Creator Bot está online e operante!`);
+    client.user.setActivity('Protegendo o servidor', { type: 'PLAYING' });
 });
 
-// O bot "escutando" o chat 24 horas por dia
+// O "Cérebro" do bot - Onde tudo acontece
 client.on('messageCreate', async (message) => {
-    // Ignora mensagens de outros bots para evitar bugs
+    // Regra de ouro: não responde a si mesmo
     if (message.author.bot) return;
 
-    // Transforma a mensagem em minúscula para facilitar a busca
-    const msgTexto = message.content.toLowerCase();
+    const msg = message.content.toLowerCase();
 
-    // FILTRO DE PALAVRÃO: Checa se a mensagem tem alguma palavra da nossa lista
-    const temPalavrao = badwords.some(palavrao => msgTexto.includes(palavrao));
-
-    if (temPalavrao) {
-        try {
-            await message.delete(); // Apaga a mensagem na mesma hora
-            message.channel.send(`⚠️ ${message.author}, por favor, não use esse tipo de vocabulário aqui!`);
-        } catch (error) {
-            console.log('O bot tentou apagar, mas está sem permissão de Administrador no canal.');
-        }
+    // --- COMANDOS DE CONTROLE ---
+    if (msg === '!moderar on') {
+        moderacaoAtiva = true;
+        return message.reply('✅ Sistema de moderação ativado!');
     }
     
-    // Um comando de teste rápido
-    if (msgTexto === '!ping') {
-        message.reply('🏓 Pong! O sistema do Creator Bot está vivo!');
+    if (msg === '!moderar off') {
+        moderacaoAtiva = false;
+        return message.reply('❌ Sistema de moderação desativado!');
+    }
+
+    if (msg === '!ping') {
+        return message.reply(`🏓 Pong! Latência: ${client.ws.ping}ms`);
+    }
+
+    // --- MÓDULO DE MODERAÇÃO (Filtro) ---
+    if (moderacaoAtiva) {
+        const temPalavrao = badwords.some(palavrao => msg.includes(palavrao));
+        if (temPalavrao) {
+            try {
+                await message.delete();
+                const aviso = await message.channel.send(`⚠️ ${message.author}, essa palavra não é permitida aqui!`);
+                setTimeout(() => aviso.delete(), 5000); // O aviso some depois de 5 segundos
+            } catch (error) {
+                console.log('Erro ao deletar mensagem: O bot precisa de permissão de Administrador.');
+            }
+        }
     }
 });
 
-// O Token vai ficar escondido na plataforma de hospedagem por segurança
+// Login do Bot usando o Token que você configurou na Discloud
 client.login(process.env.TOKEN);
+
 
