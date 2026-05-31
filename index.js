@@ -1,3 +1,17 @@
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+// Rota que recebe os dados do botão do site
+app.post('/salvar', (req, res) => {
+    const config = req.body;
+    console.log("Configurações recebidas do site:", config);
+    // Aqui a gente salvaria no banco de dados ou num arquivo .json
+    res.send("Configuração recebida!");
+});
+
+app.listen(3000, () => console.log("Servidor de recebimento rodando na porta 3000"));
+
 const { Client, GatewayIntentBits } = require('discord.js');
 
 // Configurando as permissões que ativamos lá no portal do Discord
