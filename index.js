@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+oiconst { Client, GatewayIntentBits } = require('discord.js');
 
 // Configuração do Bot
 const client = new Client({
